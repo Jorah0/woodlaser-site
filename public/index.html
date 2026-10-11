@@ -77,7 +77,9 @@
     <section id="contact" class="band wrap">
       <h2>Business inquiries</h2>
       <p class="lead">Custom orders, wholesale, events and laser jobs. Add pieces from above or just tell us what you need — we reply within one business day.</p>
-      <form id="request-form" class="form request">
+      <form id="request-form" class="form request" name="quote-request" method="POST" enctype="multipart/form-data" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="quote-request">
+        <p hidden><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
         <label>Your request <textarea name="request" rows="8" required placeholder="What would you like made? Sizes, wording, deadlines — or use “Add to request” on any piece above."></textarea></label>
         <div class="row">
           <label>Your name <input name="name" autocomplete="name" required></label>

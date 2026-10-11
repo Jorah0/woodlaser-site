@@ -4,8 +4,8 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "test": "tsc && node dist/main.js",
-    "start": "tsc && npx --yes serve ."
+    "test": "tsc && node public/dist/main.js",
+    "start": "tsc && npx --yes serve public"
   },
   "devDependencies": {
     "typescript": "^5.6.0"

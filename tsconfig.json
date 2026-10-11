@@ -4,7 +4,7 @@
     "lib": ["ES2020", "DOM"],
     "strict": true,
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "public/dist"
   },
   "include": ["src"]
 }

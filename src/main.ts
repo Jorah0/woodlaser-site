@@ -1,7 +1,9 @@
 // Edit these to match your shop.
 const BUSINESS_EMAIL = "orders@yourshop.com";
-// Form service URL (e.g. "https://formspree.io/f/abcdwxyz"). Empty = open the customer's email app instead.
-const FORM_ENDPOINT = "";
+// Where the request form posts. "/" = Netlify Forms (see netlify.toml). Empty = open the customer's email app instead.
+// Locally (`npm start`) the dev server answers the POST, so the form says "Sent" but nothing is delivered.
+// It only really sends on Netlify; do one test submission after each new deploy setup.
+const FORM_ENDPOINT = "/";
 // ponytail: $75/hr is typical for small-shop CO2/diode laser work (US range ~$60–$120/hr).
 const LASER_RATE_PER_HOUR = 75;
 const LASER_MINIMUM = 25; // covers setup, file prep and material alignment
@@ -190,7 +192,7 @@ function initRequestForm() {
     ].join("\n");
     if (!FORM_ENDPOINT) return void (location.href = mailto(subject, body));
     const data = new FormData(form);
-    data.set("_subject", subject);
+    data.set("subject", subject); // Netlify uses this as the notification email's subject line
     button.disabled = true;
     status.textContent = "Sending…";
     try {

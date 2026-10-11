@@ -1,0 +1,5 @@
+# Netlify runs `npm install`, then this command, then publishes public/.
+# `npm test` = build + pricing self-checks, so a pricing mistake fails the deploy instead of going live.
+[build]
+  command = "npm test"
+  publish = "public"

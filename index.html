@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grain &amp; Beam Woodworks</title>
+  <meta name="description" content="Handmade woodwork and laser cutting &amp; engraving, made to order.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="dist/main.js" defer></script>
+</head>
+<body>
+  <header class="hero">
+    <canvas id="grain" aria-hidden="true"></canvas>
+    <nav class="wrap">
+      <a class="logo" href="#">Grain &amp; Beam</a>
+      <div class="links">
+        <a href="#work">Woodwork</a>
+        <a href="#laser">Laser</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </nav>
+    <div class="wrap hero-text">
+      <h1>Handmade woodwork and laser engraving, made to order.</h1>
+      <p>Cutting boards, furniture, signs and gifts from our shop — plus laser time by the hour for your own projects.</p>
+      <a class="btn btn-light" href="#work">See the work</a>
+    </div>
+  </header>
+
+  <main>
+    <section id="work" class="band wrap">
+      <h2>Woodwork</h2>
+      <p class="lead">Everything is built to order. Prices are starting points — ask for a quote on any piece and we'll price your size, wood and finish.</p>
+      <div id="gallery" class="grid"></div>
+    </section>
+
+    <section id="laser" class="laser">
+      <div class="band wrap laser-cols">
+        <div>
+          <h2>Laser cutting &amp; engraving</h2>
+          <p class="rate-line">Laser time is <strong><span data-rate>$75</span> an hour</strong>, billed in 15-minute blocks with a <span data-minimum>$25</span> minimum.</p>
+          <p class="muted">Wood, acrylic, leather, cardboard and anodized aluminum. Bring your own material or we'll source it at cost. Send SVG, DXF, AI or PDF files — or we'll help with the design.</p>
+        </div>
+        <form class="calc" onsubmit="return false">
+          <label for="laser-minutes">How many minutes will your job take?</label>
+          <input id="laser-minutes" type="number" min="0" step="5" value="60" inputmode="numeric">
+          <p class="estimate">Estimate <output id="laser-total" for="laser-minutes">$75</output></p>
+          <a id="laser-book" class="btn btn-beam" href="#contact">Email this request</a>
+        </form>
+      </div>
+    </section>
+
+    <section id="contact" class="band wrap">
+      <h2>Business inquiries</h2>
+      <p class="lead">Custom orders, wholesale, events and laser jobs. We reply within one business day — attach photos, sketches or design files to speed things up.</p>
+      <a class="email" data-email href="mailto:orders@yourshop.com">orders@yourshop.com</a>
+    </section>
+  </main>
+
+  <footer class="wrap">© <span id="year"></span> Grain &amp; Beam Woodworks</footer>
+</body>
+</html>

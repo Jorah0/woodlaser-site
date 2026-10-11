@@ -1,0 +1,13 @@
+{
+  "name": "woodlaser-site",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "tsc && node dist/main.js",
+    "start": "tsc && npx --yes serve ."
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

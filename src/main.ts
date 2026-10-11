@@ -1,40 +1,106 @@
 // Edit these to match your shop.
 const BUSINESS_EMAIL = "orders@yourshop.com";
+// Form service URL (e.g. "https://formspree.io/f/abcdwxyz"). Empty = open the customer's email app instead.
+const FORM_ENDPOINT = "";
 // ponytail: $75/hr is typical for small-shop CO2/diode laser work (US range ~$60–$120/hr).
 const LASER_RATE_PER_HOUR = 75;
 const LASER_MINIMUM = 25; // covers setup, file prep and material alignment
 const BILLING_INCREMENT_MIN = 15;
+const RUSH_MULTIPLIER = 1.25;
+const LASER_BED_IN = [24, 16]; // working area of your laser, width × height in inches
+
+// Either orientation is fine: a 10 × 20 piece fits a 24 × 16 bed rotated.
+const fitsBed = (w: number, h: number) => {
+  const [bw, bh] = LASER_BED_IN;
+  return (w <= bw && h <= bh) || (w <= bh && h <= bw);
+};
+
+// ponytail: speeds are typical 50–60W CO2 numbers. Time a few real jobs on your machine and tune them.
+// Engrave speed assumes the whole width × height is filled; complexity scales that up or down.
+interface Material { name: string; engraveSqInPerMin: number; cutInPerMin: number; costPerSqIn: number }
+const MATERIALS: Material[] = [
+  { name: "Baltic birch plywood, 1/8\"", engraveSqInPerMin: 3, cutInPerMin: 35, costPerSqIn: 0.04 },
+  { name: "Hardwood (maple, walnut, cherry), 1/4\"", engraveSqInPerMin: 2.5, cutInPerMin: 12, costPerSqIn: 0.12 },
+  { name: "Acrylic, 1/8\"", engraveSqInPerMin: 2.5, cutInPerMin: 20, costPerSqIn: 0.08 },
+  { name: "Leather", engraveSqInPerMin: 4, cutInPerMin: 40, costPerSqIn: 0.15 },
+  { name: "Cardboard", engraveSqInPerMin: 5, cutInPerMin: 60, costPerSqIn: 0.01 },
+  { name: "Anodized aluminum (engrave only)", engraveSqInPerMin: 1.5, cutInPerMin: 0, costPerSqIn: 0.2 },
+];
+
+const COMPLEXITY = [
+  { name: "Simple: text, outlines, basic shapes", factor: 0.5 },
+  { name: "Moderate: logos, several elements", factor: 1 },
+  { name: "Detailed: photos, fine art, dense patterns", factor: 1.6 },
+];
+
+type JobType = "engrave" | "cut" | "both";
+interface LaserJob {
+  material: Material; job: JobType; width: number; height: number;
+  complexity: number; qty: number; ownMaterial: boolean; rush: boolean;
+}
 
 interface Piece {
   title: string;
   description: string;
-  priceFrom: number;
+  priceFrom: number; // price in the cheapest listed wood at the first size
+  woods?: string[]; // keys of WOODS
+  sizes?: { name: string; factor: number }[];
+  engraving?: boolean; // offer engraving as a paid add-on
   img?: string; // drop photos in images/ and set e.g. "images/cutting-board.jpg"
 }
 
+// Price multiplier per species, relative to maple.
+const WOODS: Record<string, number> = { Maple: 1, Oak: 1.05, Cherry: 1.15, Walnut: 1.3 };
+const ENGRAVING_PRICE = 25;
+
 const PIECES: Piece[] = [
-  { title: "End-Grain Cutting Board", description: "Walnut, maple & cherry checkerboard, food-safe oil finish. 12\" × 18\".", priceFrom: 140 },
-  { title: "Live-Edge Coffee Table", description: "Slab top with hairpin or trestle base, hand-rubbed finish.", priceFrom: 850 },
-  { title: "Floating Wall Shelves", description: "Solid oak or walnut, hidden steel brackets. Priced per shelf.", priceFrom: 95 },
-  { title: "Engraved Keepsake Box", description: "Dovetailed box with a laser-engraved lid — names, dates or artwork.", priceFrom: 120 },
-  { title: "Custom Business Sign", description: "Laser-cut lettering on stained hardwood, ready to hang.", priceFrom: 180 },
-  { title: "Charcuterie Board", description: "Long-grain board with handle and optional engraved monogram.", priceFrom: 75 },
+  { title: "End-Grain Cutting Board", description: "Walnut, maple & cherry checkerboard, food-safe oil finish.", priceFrom: 140,
+    sizes: [{ name: "12\" × 18\"", factor: 1 }, { name: "14\" × 20\"", factor: 1.3 }, { name: "16\" × 22\"", factor: 1.6 }], engraving: true },
+  { title: "Live-Edge Coffee Table", description: "Slab top with hairpin or trestle base, hand-rubbed finish.", priceFrom: 850,
+    woods: ["Maple", "Walnut"], sizes: [{ name: "36\" long", factor: 1 }, { name: "48\" long", factor: 1.35 }, { name: "60\" long", factor: 1.7 }] },
+  { title: "Floating Wall Shelves", description: "Solid oak or walnut, hidden steel brackets. Priced per shelf.", priceFrom: 95,
+    woods: ["Oak", "Walnut"], sizes: [{ name: "24\" wide", factor: 1 }, { name: "36\" wide", factor: 1.3 }, { name: "48\" wide", factor: 1.6 }] },
+  { title: "Engraved Keepsake Box", description: "Dovetailed box with a laser-engraved lid — names, dates or artwork.", priceFrom: 120,
+    woods: ["Maple", "Cherry", "Walnut"], sizes: [{ name: "Small (6\" × 4\")", factor: 1 }, { name: "Large (10\" × 7\")", factor: 1.4 }] },
+  { title: "Custom Business Sign", description: "Laser-cut lettering on stained hardwood, ready to hang.", priceFrom: 180,
+    woods: ["Oak", "Walnut"], sizes: [{ name: "12\" × 24\"", factor: 1 }, { name: "18\" × 36\"", factor: 1.6 }, { name: "24\" × 48\"", factor: 2.4 }] },
+  { title: "Charcuterie Board", description: "Long-grain board with handle and optional engraved monogram.", priceFrom: 75,
+    woods: ["Maple", "Cherry", "Walnut"], sizes: [{ name: "Standard (8\" × 16\")", factor: 1 }, { name: "Large (10\" × 22\")", factor: 1.4 }], engraving: true },
 ];
+
+interface PieceChoice { wood: string; sizeFactor: number; engraved: boolean; qty: number }
+
+function piecePrice(p: Piece, c: PieceChoice): number {
+  if (!(c.qty >= 1)) return 0;
+  // Relative to the cheapest wood this piece offers, so "From" stays the true lowest price.
+  const woodFactor = p.woods ? WOODS[c.wood] / Math.min(...p.woods.map(w => WOODS[w])) : 1;
+  const each = p.priceFrom * woodFactor * c.sizeFactor + (c.engraved ? ENGRAVING_PRICE : 0);
+  return Math.round(each) * c.qty;
+}
 
 const usd = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: n % 1 ? 2 : 0 });
 
-function laserQuote(minutes: number): number {
-  if (!(minutes > 0)) return 0;
+function laserEstimate(j: LaserJob) {
+  const area = j.width * j.height;
+  if (!(area > 0) || !(j.qty >= 1)) return { minutes: 0, materialCost: 0, total: 0 };
+  const cutting = j.job !== "engrave" && j.material.cutInPerMin > 0;
+  const engraving = j.job !== "cut" || !cutting; // can't cut this material → engrave it
+  // ponytail: cut path = bounding-box perimeter; complexity covers interior cuts. Ask for path length if quotes run off.
+  const perPiece = (engraving ? area / j.material.engraveSqInPerMin : 0)
+    + (cutting ? (2 * (j.width + j.height)) / j.material.cutInPerMin : 0);
+  const minutes = perPiece * j.complexity * j.qty;
   const billedMin = Math.ceil(minutes / BILLING_INCREMENT_MIN) * BILLING_INCREMENT_MIN;
-  return Math.max(LASER_MINIMUM, (billedMin / 60) * LASER_RATE_PER_HOUR);
+  const materialCost = j.ownMaterial ? 0 : area * j.material.costPerSqIn * j.qty;
+  const subtotal = Math.max(LASER_MINIMUM, (billedMin / 60) * LASER_RATE_PER_HOUR + materialCost);
+  return { minutes, materialCost, total: Math.round(subtotal * (j.rush ? RUSH_MULTIPLIER : 1) * 100) / 100 };
 }
 
 function mailto(subject: string, body: string): string {
   return `mailto:${BUSINESS_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...kids: (Node | string)[]) {
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...kids: (Node | string)[]): HTMLElementTagNameMap[K] {
   const node = Object.assign(document.createElement(tag), props);
   node.append(...kids);
   return node;
@@ -48,30 +114,147 @@ function renderGallery(root: HTMLElement) {
       img.onerror = () => img.remove(); // falls back to the plain wood-tone tile
       photo.append(img);
     }
-    const quote = el("a", {
-      href: mailto(`Quote request: ${p.title}`, `Hi,\n\nI'd like a quote for the "${p.title}" (listed from ${usd(p.priceFrom)}).\n\nSize / wood / finish:\nEngraving or custom details:\nNeeded by:\n\nThanks!`),
-      textContent: "Request a quote",
+    const form = el("form", { className: "form" });
+    const price = el("output");
+    const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
+    const select = (name: string, options: [value: string, text: string][]): HTMLSelectElement =>
+      el("select", { name }, ...options.map(([value, textContent]) => el("option", { value, textContent })));
+    if (p.woods) form.append(el("label", {}, "Wood", select("wood", p.woods.map(w => [w, w]))));
+    if (p.sizes) form.append(el("label", {}, "Size", select("size", p.sizes.map((s, i) => [String(i), s.name]))));
+    if (p.engraving) form.append(el("label", { className: "check" }, el("input", { name: "engraved", type: "checkbox" }), `Add engraving (+${usd(ENGRAVING_PRICE)} each)`));
+    form.append(
+      el("label", {}, "Quantity", el("input", { name: "qty", type: "number", min: "1", step: "1", value: "1", inputMode: "numeric", required: true })),
+      el("p", { className: "estimate" }, "Estimate ", price),
+      el("button", { className: "btn btn-beam", type: "submit", textContent: "Add to request" }),
+    );
+
+    const size = () => p.sizes?.[+field("size").value];
+    const choice = (): PieceChoice => ({
+      wood: p.woods ? field("wood").value : "",
+      sizeFactor: size()?.factor ?? 1,
+      engraved: !!p.engraving && field("engraved").checked,
+      qty: Math.floor(field("qty").valueAsNumber),
     });
+    const update = () => (price.textContent = usd(piecePrice(p, choice())));
+    form.addEventListener("input", update);
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const c = choice();
+      addToRequest([
+        `${p.title}: estimate ${usd(piecePrice(p, c))}`,
+        ...(c.wood ? [`  Wood: ${c.wood}`] : []),
+        ...(p.sizes ? [`  Size: ${size()!.name}`] : []),
+        ...(p.engraving ? [`  Engraving: ${c.engraved ? "yes" : "no"}`] : []),
+        `  Quantity: ${c.qty}`,
+      ].join("\n"));
+    });
+    update();
+
     root.append(el("article", { className: "piece" },
       photo,
       el("h3", { textContent: p.title }),
       el("p", { textContent: p.description }),
-      el("div", { className: "piece-foot" }, el("span", { textContent: `From ${usd(p.priceFrom)}` }), quote),
+      el("details", { className: "config" },
+        el("summary", { className: "piece-foot" },
+          el("span", { textContent: `From ${usd(p.priceFrom)}` }),
+          el("span", { className: "config-toggle", textContent: "Customize & price" })),
+        form),
     ));
   }
 }
 
-function initLaserCalc() {
-  const minutes = document.getElementById("laser-minutes") as HTMLInputElement;
+// Appends an item to the request form in #contact, so one email can cover several pieces.
+function addToRequest(text: string) {
+  const box = (document.getElementById("request-form") as HTMLFormElement).elements.namedItem("request") as HTMLTextAreaElement;
+  box.value = box.value.trim() ? `${box.value.trimEnd()}\n\n${text}` : text;
+  document.getElementById("contact")!.scrollIntoView();
+  box.focus({ preventScroll: true });
+}
+
+function initRequestForm() {
+  const form = document.getElementById("request-form") as HTMLFormElement;
+  const status = document.getElementById("request-status")!;
+  const button = form.querySelector("button")!;
+  const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
+  document.getElementById("artwork-field")!.hidden = !FORM_ENDPOINT; // mailto can't carry attachments
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const subject = `Quote request from ${field("name").value}`;
+    // ponytail: some mail apps cap mailto links around 2,000 characters; setting FORM_ENDPOINT avoids that.
+    const body = [
+      "Hi,", "", field("request").value.trim(), "",
+      `Name: ${field("name").value}`,
+      `Needed by: ${field("needed").value || "no deadline"}`,
+      ...(FORM_ENDPOINT ? [] : ["", "(I'll attach any artwork or photos to this email.)"]),
+    ].join("\n");
+    if (!FORM_ENDPOINT) return void (location.href = mailto(subject, body));
+    const data = new FormData(form);
+    data.set("_subject", subject);
+    button.disabled = true;
+    status.textContent = "Sending…";
+    try {
+      const res = await fetch(FORM_ENDPOINT, { method: "POST", body: data, headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      form.reset();
+      status.textContent = "Sent. We'll reply within one business day.";
+    } catch {
+      // Keep what they typed; give them a way to send it anyway.
+      status.replaceChildren("That didn't send. ", el("a", { href: mailto(subject, body), textContent: "Email it to us instead" }), ".");
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+function initLaserForm() {
+  const form = document.getElementById("laser-form") as HTMLFormElement;
   const out = document.getElementById("laser-total")!;
-  const book = document.getElementById("laser-book") as HTMLAnchorElement;
-  const update = () => {
-    const m = minutes.valueAsNumber;
-    const total = laserQuote(m);
-    out.textContent = usd(total);
-    book.href = mailto("Laser job request", `Hi,\n\nI'd like to book about ${m || 0} minutes of laser time (estimate ${usd(total)}).\n\nMaterial:\nSize:\nArtwork attached: yes / no\n\nThanks!`);
+  const breakdown = document.getElementById("laser-breakdown")!;
+  const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
+
+  field("material").append(...MATERIALS.map(m => el("option", { value: m.name, textContent: m.name })));
+  field("complexity").append(...COMPLEXITY.map((c, i) => el("option", { value: c.name, textContent: c.name, defaultSelected: i === 1 })));
+
+  const readJob = (): LaserJob => ({
+    material: MATERIALS.find(m => m.name === field("material").value)!,
+    job: field("job").value as JobType,
+    width: field("width").valueAsNumber,
+    height: field("height").valueAsNumber,
+    complexity: COMPLEXITY.find(c => c.name === field("complexity").value)!.factor,
+    qty: Math.floor(field("qty").valueAsNumber),
+    ownMaterial: field("own").checked,
+    rush: field("rush").checked,
+  });
+
+  const summary = () => {
+    const j = readJob(), est = laserEstimate(j);
+    return [
+      `Laser job: estimate ${usd(est.total)} (about ${Math.round(est.minutes)} min of machine time)`,
+      `  Material: ${j.material.name} (${j.ownMaterial ? "I'll supply it" : "shop-sourced"})`,
+      `  Job: ${(form.elements.namedItem("job") as HTMLSelectElement).selectedOptions[0].text}`,
+      `  Size: ${j.width} × ${j.height} in, quantity ${j.qty}`,
+      `  Complexity: ${field("complexity").value}`,
+      `  Rush: ${j.rush ? "yes" : "no"}`,
+      ...(fitsBed(j.width, j.height) ? [] : ["  Note: larger than the laser bed, needs a custom quote"]),
+    ].join("\n");
   };
-  minutes.addEventListener("input", update);
+
+  const update = () => {
+    const j = readJob(), est = laserEstimate(j);
+    out.textContent = usd(est.total);
+    breakdown.textContent = !est.total
+      ? "Enter a size and quantity."
+      : !fitsBed(j.width, j.height)
+        ? `That's bigger than our ${LASER_BED_IN.join(" × ")} in bed. We may be able to tile it or cut it in sections, so send it over and we'll quote it by hand.`
+        : `About ${Math.round(est.minutes)} min of machine time · ${usd(est.materialCost)} material. Final price confirmed after we review your files.`;
+  };
+
+  form.addEventListener("input", update);
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    addToRequest(summary());
+  });
   update();
 }
 
@@ -153,15 +336,38 @@ function init() {
     a.textContent = BUSINESS_EMAIL;
   });
   renderGallery(document.getElementById("gallery")!);
-  initLaserCalc();
+  initLaserForm();
+  initRequestForm();
   document.getElementById("year")!.textContent = String(new Date().getFullYear());
 }
 
-// Self-check: `npm test` runs this file in Node, where there is no document.
-console.assert(laserQuote(0) === 0, "zero minutes");
-console.assert(laserQuote(5) === 25, "minimum charge");
-console.assert(laserQuote(30) === 37.5, "half hour");
-console.assert(laserQuote(31) === 56.25, "rounds up to 45 min");
-console.assert(laserQuote(120) === 150, "two hours");
-
 if (typeof document !== "undefined") init();
+else {
+  // Self-check: `npm test` runs this file in Node, where there is no document. A throw exits non-zero.
+  const [ply, hardwood, , , , aluminum] = MATERIALS;
+  const base: LaserJob = { material: ply, job: "engrave", width: 6, height: 4, complexity: 1, qty: 1, ownMaterial: false, rush: false };
+  const check = (j: Partial<LaserJob>, want: number, why: string) => {
+    const got = laserEstimate({ ...base, ...j }).total;
+    if (got !== want) throw new Error(`${why}: expected ${want}, got ${got}`);
+  };
+  check({ width: 0 }, 0, "no size");
+  check({}, 25, "small job hits minimum");
+  check({ rush: true }, 31.25, "rush on top of minimum");
+  check({ material: hardwood, width: 12, height: 12, ownMaterial: true }, 75, "57.6 min bills as 60");
+  check({ material: hardwood, width: 12, height: 12 }, 92.28, "plus material");
+  check({ material: hardwood, job: "both", width: 12, height: 12, complexity: 1.6, qty: 10 }, 1410.3, "detailed batch");
+  check({ material: aluminum, job: "cut", width: 10, height: 10, ownMaterial: true }, 93.75, "uncuttable falls back to engrave");
+  if (!fitsBed(24, 16) || !fitsBed(16, 24) || fitsBed(25, 10) || fitsBed(20, 20)) throw new Error("bed fit check");
+
+  const shelf: Piece = { title: "t", description: "", priceFrom: 100, woods: ["Oak", "Walnut"] };
+  const one: PieceChoice = { wood: "Oak", sizeFactor: 1, engraved: false, qty: 1 };
+  const checkPiece = (p: Piece, c: Partial<PieceChoice>, want: number, why: string) => {
+    const got = piecePrice(p, { ...one, ...c });
+    if (got !== want) throw new Error(`${why}: expected ${want}, got ${got}`);
+  };
+  checkPiece(shelf, {}, 100, "cheapest listed wood is the From price");
+  checkPiece(shelf, { wood: "Walnut", sizeFactor: 1.5, engraved: true, qty: 2 }, 422, "wood × size + engraving, per piece");
+  checkPiece({ ...shelf, woods: undefined }, { wood: "" }, 100, "no wood choice");
+  checkPiece(shelf, { qty: NaN }, 0, "empty quantity");
+  console.log("pricing checks passed");
+}

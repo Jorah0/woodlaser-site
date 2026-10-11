@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Grain &amp; Beam Woodworks</title>
   <meta name="description" content="Handmade woodwork and laser cutting &amp; engraving, made to order.">
+  <!-- Link previews (texts, Facebook, Slack). Add og:image once you have a good shop photo. -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Grain &amp; Beam Woodworks">
+  <meta property="og:description" content="Handmade woodwork and laser cutting &amp; engraving, made to order. Get an instant estimate online.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
@@ -41,20 +46,49 @@
           <h2>Laser cutting &amp; engraving</h2>
           <p class="rate-line">Laser time is <strong><span data-rate>$75</span> an hour</strong>, billed in 15-minute blocks with a <span data-minimum>$25</span> minimum.</p>
           <p class="muted">Wood, acrylic, leather, cardboard and anodized aluminum. Bring your own material or we'll source it at cost. Send SVG, DXF, AI or PDF files — or we'll help with the design.</p>
+          <p class="muted">We can't laser PVC or vinyl — they release chlorine gas when cut.</p>
         </div>
-        <form class="calc" onsubmit="return false">
-          <label for="laser-minutes">How many minutes will your job take?</label>
-          <input id="laser-minutes" type="number" min="0" step="5" value="60" inputmode="numeric">
-          <p class="estimate">Estimate <output id="laser-total" for="laser-minutes">$75</output></p>
-          <a id="laser-book" class="btn btn-beam" href="#contact">Email this request</a>
+        <form id="laser-form" class="form calc">
+          <label>Material <select name="material"></select></label>
+          <label>Complexity <select name="complexity"></select></label>
+          <div class="row">
+            <label>Job
+              <select name="job">
+                <option value="engrave">Engrave</option>
+                <option value="cut">Cut</option>
+                <option value="both">Cut + engrave</option>
+              </select>
+            </label>
+            <label>Quantity <input name="qty" type="number" min="1" step="1" value="1" inputmode="numeric" required></label>
+          </div>
+          <div class="row">
+            <label>Width (in) <input name="width" type="number" min="0.5" step="0.5" value="6" inputmode="decimal" required></label>
+            <label>Height (in) <input name="height" type="number" min="0.5" step="0.5" value="4" inputmode="decimal" required></label>
+          </div>
+          <label class="check"><input name="own" type="checkbox"> I'll supply the material</label>
+          <label class="check"><input name="rush" type="checkbox"> Rush job (+25%)</label>
+          <p class="estimate">Estimate <output id="laser-total">$25</output></p>
+          <p id="laser-breakdown" class="breakdown"></p>
+          <button class="btn btn-beam" type="submit">Add to my request</button>
         </form>
       </div>
     </section>
 
     <section id="contact" class="band wrap">
       <h2>Business inquiries</h2>
-      <p class="lead">Custom orders, wholesale, events and laser jobs. We reply within one business day — attach photos, sketches or design files to speed things up.</p>
-      <a class="email" data-email href="mailto:orders@yourshop.com">orders@yourshop.com</a>
+      <p class="lead">Custom orders, wholesale, events and laser jobs. Add pieces from above or just tell us what you need — we reply within one business day.</p>
+      <form id="request-form" class="form request">
+        <label>Your request <textarea name="request" rows="8" required placeholder="What would you like made? Sizes, wording, deadlines — or use “Add to request” on any piece above."></textarea></label>
+        <div class="row">
+          <label>Your name <input name="name" autocomplete="name" required></label>
+          <label>Your email <input name="email" type="email" autocomplete="email" required></label>
+        </div>
+        <label>Needed by <input name="needed" type="date"></label>
+        <label id="artwork-field">Artwork or photos <input name="artwork" type="file" multiple accept=".svg,.dxf,.ai,.pdf,.png,.jpg,.jpeg"></label>
+        <button class="btn btn-beam" type="submit">Send request</button>
+        <p id="request-status" class="status" role="status"></p>
+      </form>
+      <p class="direct">Or email us directly: <a data-email href="mailto:orders@yourshop.com">orders@yourshop.com</a></p>
     </section>
   </main>
 

@@ -60,24 +60,50 @@ nav a { text-decoration: none; }
 .piece h3 { font-size: 1.35rem; margin: 18px 0 6px; }
 .piece p { margin: 0; color: var(--muted); }
 .piece-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule); }
-.piece-foot a { font-weight: 600; color: var(--walnut); text-underline-offset: 4px; }
-.piece-foot a:hover { color: #8a4b1f; }
 
 /* Laser */
 .laser { background: var(--walnut-deep); color: #f3e9dd; }
 .laser-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 48px 72px; align-items: start; }
 .rate-line { font-family: var(--serif); font-size: clamp(1.5rem, 3vw, 2.1rem); line-height: 1.3; max-width: 24ch; margin: 8px 0 20px; }
-.calc { border: 1px solid #4a3a2e; border-radius: 6px; padding: 28px; }
-.calc label { display: block; font-weight: 500; margin-bottom: 10px; }
-.calc input {
-  width: 100%; padding: 12px 14px; font: inherit; font-size: 1.25rem; color: inherit;
-  background: #1f1611; border: 1px solid #5a4636; border-radius: 4px;
+.calc {
+  --field-bg: #1f1611; --field-border: #5a4636; --estimate: var(--beam); --soft: #b9ab9b;
+  border: 1px solid #4a3a2e; border-radius: 6px; padding: 28px; color-scheme: dark;
 }
-.estimate { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 0; color: #b9ab9b; }
-.estimate output { font-family: var(--serif); font-weight: 700; font-size: 2.4rem; color: var(--beam); }
+.breakdown { margin: 0 0 24px; color: var(--soft); font-size: .9rem; }
+
+/* Forms: light by default; .calc above swaps in the dark field colors. */
+.form { --field-bg: #fff; --field-border: #c4c8bf; --estimate: var(--walnut); --soft: var(--muted); }
+.form label { display: block; font-weight: 500; margin-bottom: 16px; }
+.form input, .form select, .form textarea {
+  display: block; width: 100%; margin-top: 6px; padding: 10px 12px; font: inherit; font-weight: 400; color: inherit;
+  background: var(--field-bg); border: 1px solid var(--field-border); border-radius: 4px;
+}
+.form select { min-height: 48px; } /* match text inputs */
+.form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 0 12px; }
+.form .check { display: flex; align-items: center; gap: 10px; font-weight: 400; margin-bottom: 10px; }
+.form .check input { width: auto; margin: 0; accent-color: var(--beam); }
+.form button { width: 100%; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+.form button:disabled { opacity: .6; cursor: progress; }
+.estimate { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 0 4px; color: var(--soft); }
+.estimate output { font-family: var(--serif); font-weight: 700; font-size: 2.4rem; color: var(--estimate); }
+.piece .estimate { margin: 8px 0 16px; }
+.piece .estimate output { font-size: 1.6rem; }
+[hidden] { display: none !important; }
+
+/* Gallery "Customize & price" panel */
+.config summary { cursor: pointer; list-style: none; }
+.config summary::-webkit-details-marker { display: none; }
+.config-toggle { font-weight: 600; color: var(--walnut); text-decoration: underline; text-underline-offset: 4px; }
+.config-toggle::after { content: " ▾"; }
+.config[open] .config-toggle::after { content: " ▴"; }
+.config summary:hover .config-toggle { color: #8a4b1f; }
+.config form { padding-top: 16px; }
 
 /* Contact */
-.email { font-family: var(--serif); font-weight: 600; font-size: clamp(1.5rem, 5vw, 2.6rem); color: var(--walnut); text-underline-offset: 8px; word-break: break-word; }
+.request { max-width: 640px; }
+.status { margin: 12px 0 0; }
+.status a, .direct a { color: #8a4b1f; font-weight: 600; }
+.direct { color: var(--muted); margin: 32px 0 0; }
 footer { padding-top: 32px; padding-bottom: 40px; color: var(--muted); border-top: 1px solid var(--rule); font-size: .9rem; }
 
 @media (max-width: 640px) {
